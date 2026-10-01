@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<title>JSON Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: split workbench. Raw payload on the left, the rendered screen on a dotted canvas on the right. */
+:root{
+  --bg:#E8EBF0; --panel:#FFFFFF; --sunk:#F3F5F8; --ink:#141922; --muted:#566070; --faint:#8790A0; --line:#D5DAE2;
+  --accent:#2745CC; --accent-ink:#FFFFFF; --accent-soft:#E2E7FB; --mark:#E9A400;
+  --danger:#B8322A; --danger-soft:#FBE5E2; --okc:#1D7A4C;
+  --frame:#1C2029;
+  --m-bg:#F6F7F9; --m-surface:#FFFFFF; --m-ink:#1B1F27; --m-muted:#667085; --m-line:#E4E7EC; --m-brand:#0E7C72; --m-brand-soft:#DCF1EE;
+  --good:#146C43; --good-bg:#DBF2E5; --warn:#8F5400; --warn-bg:#FCEDCC; --bad:#B42318; --bad-bg:#FDE2DE; --neutral:#475467; --neutral-bg:#ECEFF3; --star:#E29A0E;
+  --f-display:"Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E1117; --panel:#161A22; --sunk:#11151C; --ink:#E6E9EF; --muted:#9BA4B3; --faint:#6A7383; --line:#272D38;
+  --accent:#8199FF; --accent-ink:#0B0E14; --accent-soft:#1E2747; --mark:#F2C14B;
+  --danger:#FF8075; --danger-soft:#3A1816; --okc:#5CCB8F;
+  --frame:#000000;
+  --m-bg:#0F1217; --m-surface:#181C23; --m-ink:#E8EBF0; --m-muted:#98A1B0; --m-line:#2A303B; --m-brand:#4FD1C0; --m-brand-soft:#123833;
+  --good:#6FDDA0; --good-bg:#12301F; --warn:#F3BE5C; --warn-bg:#33270F; --bad:#FF8A80; --bad-bg:#3A1715; --neutral:#B4BCC8; --neutral-bg:#232934; --star:#F4BE3A;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E1117; --panel:#161A22; --sunk:#11151C; --ink:#E6E9EF; --muted:#9BA4B3; --faint:#6A7383; --line:#272D38;
+  --accent:#8199FF; --accent-ink:#0B0E14; --accent-soft:#1E2747; --mark:#F2C14B;
+  --danger:#FF8075; --danger-soft:#3A1816; --okc:#5CCB8F;
+  --frame:#000000;
+  --m-bg:#0F1217; --m-surface:#181C23; --m-ink:#E8EBF0; --m-muted:#98A1B0; --m-line:#2A303B; --m-brand:#4FD1C0; --m-brand-soft:#123833;
+  --good:#6FDDA0; --good-bg:#12301F; --warn:#F3BE5C; --warn-bg:#33270F; --bad:#FF8A80; --bad-bg:#3A1715; --neutral:#B4BCC8; --neutral-bg:#232934; --star:#F4BE3A;
+  color-scheme:dark;
+}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;padding-inline:16px;padding-block:12px 16px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.glyph{display:flex;align-items:center;gap:3px;font:600 13px/1 var(--f-mono);color:var(--accent)}
+.glyph i{display:block;width:16px;height:12px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.glyph i::after{content:"";position:absolute;left:2px;right:2px;top:2px;height:2px;background:currentColor;border-radius:1px}
+.brand h1{margin:0;font:700 19px/1 var(--f-display);letter-spacing:-0.01em}
+.brand p{margin:0;color:var(--muted);font-size:12.5px}
+.samples{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
+.samples span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.chipbtn{border:1px solid var(--line);background:var(--panel);padding:5px 10px;border-radius:999px;font-size:12.5px;cursor:pointer}
+.chipbtn:hover{border-color:var(--accent);color:var(--accent)}
+.chipbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* workbench */
+.work{display:grid;grid-template-columns:minmax(300px,.78fr) minmax(0,1.5fr);gap:12px;min-height:0}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.pane-h{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pane-h h2{margin:0 auto 0 4px;font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--panel);padding:5px 10px;border-radius:6px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;padding:2px;background:var(--sunk)}
+.seg button{border:0;background:none;padding:4px 10px;border-radius:5px;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+.seg-label{font-size:11px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+
+/* editor */
+.editor{flex:1;display:flex;min-height:0;background:var(--sunk);position:relative}
+.gutter{margin:0;padding:12px 8px 12px 10px;text-align:right;color:var(--faint);font:12.5px/1.6 var(--f-mono);user-select:none;overflow:hidden;min-width:42px;border-right:1px solid var(--line);font-variant-numeric:tabular-nums}
+.gutter .e{color:var(--danger);font-weight:600}
+#src{flex:1;min-width:0;border:0;resize:none;outline:none;background:transparent;color:var(--ink);font:12.5px/1.6 var(--f-mono);padding:12px;white-space:pre;overflow:auto;tab-size:2}
+#src:focus-visible{outline:none}
+.editor.drag{outline:2px dashed var(--accent);outline-offset:-6px}
+.status{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);min-height:36px}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--okc);flex:none;margin-top:5px}
+.status.err{background:var(--danger-soft);color:var(--danger)}
+.status.err .dot{background:var(--danger)}
+.status.warn .dot{background:var(--mark)}
+
+/* preview */
+.stage{flex:1;overflow:auto;padding:20px;background-color:var(--sunk);background-image:radial-gradient(var(--line) 1px,transparent 1.2px);background-size:16px 16px;min-height:0}
+.inspect{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);min-height:36px;flex-wrap:wrap}
+.inspect code{font:12px var(--f-mono);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:1px 6px;overflow-wrap:anywhere}
+.inspect .arrow{color:var(--faint)}
+.inspect .as{color:var(--accent);font-weight:500}
+.inspect .note{color:var(--faint)}
+
+.empty-out{max-width:420px;margin:60px auto;text-align:center;color:var(--muted)}
+.empty-out h3{font:600 18px var(--f-display);color:var(--ink);margin:0 0 6px}
+
+/* device frames */
+.m-frame{margin:0 auto;background:var(--m-bg);border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgb(0 0 0 / .08),0 12px 32px -12px rgb(0 0 0 / .22);border:1px solid var(--line);max-width:1100px}
+.m-chrome{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--sunk);border-bottom:1px solid var(--line)}
+.m-chrome .dots{display:flex;gap:6px}
+.m-chrome .dots i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.m-url{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 10px;font:12px var(--f-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-frame.mobile{width:390px;max-width:100%;border-radius:38px;border:10px solid var(--frame)}
+.m-frame.mobile .m-chrome{justify-content:space-between;background:var(--m-surface);border-bottom:0;padding:10px 22px 6px;font:600 13px var(--f-body);color:var(--m-ink)}
+.m-frame.mobile .m-chrome .bars{display:flex;gap:3px;align-items:flex-end}
+.m-frame.mobile .m-chrome .bars i{width:3px;background:var(--m-ink);border-radius:1px}
+
+/* ---------- mockup (the generated product UI) ---------- */
+.m-root{container-type:inline-size;color:var(--m-ink);font:14px/1.45 var(--f-body);background:var(--m-bg);min-height:360px}
+.m-appbar{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--m-surface);border-bottom:1px solid var(--m-line)}
+.m-logo{width:22px;height:22px;border-radius:6px;background:var(--m-brand);flex:none}
+.m-crumbs{font-size:13px;color:var(--m-muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-crumbs b{color:var(--m-ink);font-weight:500}
+.m-crumbs i{font-style:normal;margin:0 6px;opacity:.6}
+.m-me{margin-left:auto;width:26px;height:26px;border-radius:50%;background:var(--m-brand-soft);border:1px solid var(--m-line);flex:none}
+.m-main{padding:20px;display:flex;flex-direction:column;gap:16px}
+
+[data-path]{border-radius:4px;transition:box-shadow .12s}
+.m-root [data-path].hot{box-shadow:0 0 0 2px var(--mark);background-color:color-mix(in srgb,var(--mark) 12%,transparent)}
+
+.m-toast{display:flex;gap:12px;align-items:flex-start;background:var(--m-surface);border:1px solid var(--m-line);border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px -10px rgb(0 0 0 / .25);max-width:420px;align-self:flex-end;width:100%}
+.m-toast .ic{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;font-size:14px}
+.m-toast .tt{font-weight:600}
+.m-toast .tb{color:var(--m-muted);font-size:13px}
+.m-toast .tm{margin-left:auto;font-size:12px;color:var(--m-muted);white-space:nowrap}
+.m-kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--m-muted);font-weight:500}
+
+.m-entity{display:flex;flex-direction:column;gap:16px;min-width:0}
+.m-head{display:flex;gap:16px;align-items:center;background:var(--m-surface);border:1px solid var(--m-line);border-radius:12px;padding:18px}
+.m-head-t{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.m-eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--m-muted);font-weight:500}
+.m-title{margin:0;font:600 22px/1.2 var(--f-body);letter-spacing:-.01em;text-wrap:balance;overflow-wrap:anywhere}
+.m-sub{color:var(--m-muted);overflow-wrap:anywhere}
+.m-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+
+.m-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.m-stat{background:var(--m-surface);border:1px solid var(--m-line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.m-stat .l{font-size:12px;color:var(--m-muted)}
+.m-stat .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+.m-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.m-body > .full{grid-column:1/-1}
+.m-card{background:var(--m-surface);border:1px solid var(--m-line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.m-card > h3,.m-sec-h{margin:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.m-card > h3 .n,.m-sec-h .n{font-weight:400;color:var(--m-muted)}
+.m-card .m-card{background:var(--m-bg);border-radius:10px;padding:12px}
+.m-mini{display:flex;gap:12px;align-items:center}
+.m-mini .m-title{font-size:15px}
+
+.m-dl{display:grid;grid-template-columns:minmax(90px,38%) minmax(0,1fr);gap:9px 14px;margin:0}
+.m-dl dt{color:var(--m-muted);font-size:13px}
+.m-dl dd{margin:0;min-width:0;overflow-wrap:anywhere;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.m-p{margin:0;line-height:1.6;max-width:65ch;overflow-wrap:anywhere}
+
+.m-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;background:var(--neutral-bg);color:var(--neutral)}
+.m-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.m-pill.good{background:var(--good-bg);color:var(--good)}
+.m-pill.warn{background:var(--warn-bg);color:var(--warn)}
+.m-pill.bad{background:var(--bad-bg);color:var(--bad)}
+.m-pill.plain::before{display:none}
+.m-tags{display:flex;gap:6px;flex-wrap:wrap}
+.m-tag{padding:2px 8px;border-radius:6px;background:var(--m-brand-soft);color:var(--m-brand);font-size:12px;font-weight:500}
+.m-link{color:var(--m-brand);text-decoration:none;overflow-wrap:anywhere}
+a.m-link:hover{text-decoration:underline}
+.m-money{font-variant-numeric:tabular-nums;font-weight:500}
+.m-money.neg{color:var(--good)}
+.m-rel{color:var(--m-muted);font-size:12px}
+.m-mono{font:12.5px var(--f-mono)}
+.m-code{font:500 11.5px var(--f-mono);padding:1px 6px;border:1px solid var(--m-line);border-radius:4px;color:var(--m-muted)}
+.m-none{color:var(--m-muted);font-style:italic}
+.m-swatch{width:16px;height:16px;border-radius:4px;border:1px solid var(--m-line);display:inline-block;flex:none}
+.m-switch{width:30px;height:18px;border-radius:999px;background:var(--m-line);position:relative;flex:none;display:inline-block}
+.m-switch i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--m-surface);box-shadow:0 1px 2px rgb(0 0 0 / .25)}
+.m-switch.on{background:var(--m-brand)}
+.m-switch.on i{left:14px}
+.m-switch-t{font-size:13px;color:var(--m-muted)}
+.m-bar{flex:1;min-width:60px;max-width:180px;height:6px;border-radius:999px;background:var(--m-line);overflow:hidden}
+.m-bar i{display:block;height:100%;background:var(--m-brand);border-radius:inherit}
+.m-stars{color:var(--star);letter-spacing:1px;white-space:nowrap}
+.m-stars .off{color:var(--m-line)}
+.m-stars b{color:var(--m-ink);font-weight:500;margin-left:4px;letter-spacing:0;font-size:13px}
+.m-addr{display:flex;flex-direction:column;line-height:1.5}
+.m-pin{display:inline-flex;align-items:center;gap:8px}
+.m-pin .map{width:44px;height:32px;border-radius:6px;background-color:var(--m-brand-soft);background-image:linear-gradient(var(--m-line) 1px,transparent 1px),linear-gradient(90deg,var(--m-line) 1px,transparent 1px);background-size:8px 8px;position:relative;flex:none}
+.m-pin .map::after{content:"";position:absolute;left:50%;top:40%;width:10px;height:10px;border-radius:50% 50% 50% 0;background:var(--bad);transform:translate(-50%,-50%) rotate(-45deg)}
+.m-spark{display:flex;align-items:center;gap:12px}
+.m-spark svg{flex:1;min-width:0;height:48px;overflow:visible}
+.m-spark .meta{font-size:12px;color:var(--m-muted);display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap}
+.m-spark .meta b{color:var(--m-ink);font-size:16px;font-weight:600}
+
+/* images: deterministic placeholder underneath, real image fades in when it loads */
+.m-img{position:relative;display:inline-grid;place-items:center;overflow:hidden;flex:none;background:linear-gradient(135deg,hsl(var(--h) 52% 70%),hsl(calc(var(--h) + 45) 58% 52%));color:#fff;font-weight:600}
+.m-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
+.m-img img.ok{opacity:1}
+.m-img svg{width:40%;height:40%;opacity:.85}
+.m-img.avatar{width:56px;height:56px;border-radius:50%;font-size:19px}
+.m-img.cover{width:84px;height:84px;border-radius:10px}
+.m-img.thumb{width:36px;height:36px;border-radius:8px;font-size:12px}
+.m-img.thumb.avatar{border-radius:50%}
+.m-img.card{width:100%;height:auto;aspect-ratio:4/3;max-width:100%;border-radius:0}
+.m-img.sm{width:40px;height:40px;font-size:14px}
+.m-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.m-gallery .m-img{width:100%;height:auto;aspect-ratio:1;border-radius:8px}
+
+/* collections */
+.m-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.m-toolbar h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.m-toolbar .cnt{color:var(--m-muted)}
+.m-search{margin-left:auto;min-width:180px;flex:0 1 260px;border:1px solid var(--m-line);background:var(--m-surface);border-radius:8px;padding:7px 12px;color:var(--m-muted);font-size:13px}
+.m-filters{display:flex;gap:6px;flex-wrap:wrap}
+.m-filter{padding:4px 12px;border-radius:999px;border:1px solid var(--m-line);background:var(--m-surface);font-size:12.5px;color:var(--m-muted)}
+.m-filter.on{background:var(--m-ink);color:var(--m-surface);border-color:var(--m-ink)}
+.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.m-item{background:var(--m-surface);border:1px solid var(--m-line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.m-item-b{padding:12px 14px 14px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.m-item-top{display:flex;gap:6px;flex-wrap:wrap}
+.m-item-t{font-weight:600;overflow-wrap:anywhere}
+.m-item-row{display:flex;align-items:center;gap:8px}
+.m-item-s{color:var(--m-muted);font-size:13px;overflow-wrap:anywhere}
+.m-item-m{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.m-item-m .m-money{font-size:17px;font-weight:600}
+.m-item-d{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--m-muted)}
+.m-item-d span b{color:var(--m-ink);font-weight:400}
+.m-more{color:var(--m-muted);font-size:12.5px}
+.m-tablewrap{overflow-x:auto;background:var(--m-surface);border:1px solid var(--m-line);border-radius:12px}
+.m-card .m-tablewrap{border-radius:8px}
+.m-table{width:100%;border-collapse:collapse;font-size:13px}
+.m-table th{text-align:left;font-weight:500;color:var(--m-muted);font-size:12px;padding:9px 12px;border-bottom:1px solid var(--m-line);white-space:nowrap;background:var(--m-bg)}
+.m-table td{padding:10px 12px;border-bottom:1px solid var(--m-line);vertical-align:middle}
+.m-table tr:last-child td{border-bottom:0}
+.m-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.m-table td .cell{display:flex;align-items:center;gap:8px}
+.m-pager{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;color:var(--m-muted);font-size:13px}
+.m-pager .pg{display:flex;gap:6px}
+.m-pager .pg span{border:1px solid var(--m-line);background:var(--m-surface);border-radius:6px;padding:4px 10px}
+.m-pager .pg .dis{opacity:.45}
+.m-dev{border:1px dashed var(--m-line);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--m-muted)}
+.m-dev summary{cursor:pointer}
+.m-dev .m-dl{margin-top:10px}
+.m-dev dd{font:12px var(--f-mono);color:var(--m-muted)}
+
+@container (max-width: 620px){
+  .m-main{padding:14px}
+  .m-appbar{padding:10px 14px}
+  .m-head{flex-wrap:wrap;padding:14px}
+  .m-badges{justify-content:flex-start;width:100%}
+  .m-title{font-size:19px}
+  .m-body{grid-template-columns:minmax(0,1fr)}
+  .m-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .m-grid{grid-template-columns:minmax(0,1fr)}
+  .m-item{flex-direction:row}
+  .m-item .m-img.card{width:96px;aspect-ratio:1;align-self:stretch;height:auto}
+  .m-search{margin-left:0;flex:1 1 100%}
+  .m-toast{max-width:none}
+}
+
+/* field map */
+.fm{display:flex;flex-direction:column;gap:14px;max-width:1100px;margin:0 auto}
+.fm-sum{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.fm-tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;min-width:110px}
+.fm-tile b{display:block;font:700 22px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.fm-tile span{font-size:12px;color:var(--muted)}
+.fm-tools{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.fm-scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.fm table{width:100%;border-collapse:collapse;font-size:13px}
+.fm th{text-align:left;font-weight:500;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--sunk)}
+.fm td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.fm tr:last-child td{border-bottom:0}
+.fm .path{font:12.5px var(--f-mono);white-space:nowrap}
+.fm .path .pre{color:var(--faint)}
+.fm .ex{font:12px var(--f-mono);color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fm .ty{color:var(--muted);white-space:nowrap}
+.fm .as{font-weight:500}
+.fm .nt{display:block;color:var(--faint);font-size:12px;font-weight:400}
+.vis{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:500;white-space:nowrap}
+.vis.shown{background:var(--accent-soft);color:var(--accent)}
+.vis.hidden{background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+.vis.empty{background:var(--danger-soft);color:var(--danger)}
+.fm tr.hot td{background:color-mix(in srgb,var(--mark) 14%,transparent)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:10}
+
+@media (max-width: 900px){
+  html,body{height:auto}
+  .app{height:auto}
+  .work{grid-template-columns:minmax(0,1fr)}
+  .pane.src{height:340px}
+  .pane.out{min-height:80vh}
+  .samples{margin-left:0}
+}
+@media (max-width: 480px){
+  .stage{padding:12px}
+  .brand p{display:none}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="glyph" aria-hidden="true">{ }<span>→</span><i></i></span>
+      <div>
+        <h1>JSON Visualizer</h1>
+        <p>Paste an API payload. See the screen a user would get.</p>
+      </div>
+    </div>
+    <div class="samples" id="samples"><span>Examples</span></div>
+  </header>
+
+  <main class="work">
+    <section class="pane src" aria-label="Payload">
+      <div class="pane-h">
+        <h2>Payload</h2>
+        <button class="btn" id="fmt" type="button">Format</button>
+        <label class="btn" for="file">Open file</label>
+        <input id="file" type="file" accept=".json,application/json,text/plain" hidden>
+        <button class="btn" id="clear" type="button">Clear</button>
+      </div>
+      <div class="editor" id="editor">
+        <pre class="gutter" id="gutter" aria-hidden="true">1</pre>
+        <textarea id="src" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" aria-label="JSON payload" placeholder="Paste JSON from an API response, webhook, or docs page"></textarea>
+      </div>
+      <div class="status" id="status" role="status"><span class="dot"></span><span id="statusText">Ready</span></div>
+    </section>
+
+    <section class="pane out" aria-label="Preview">
+      <div class="pane-h">
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" data-view="mockup" aria-pressed="true">Mockup</button>
+          <button type="button" data-view="map" aria-pressed="false">Field map</button>
+        </div>
+        <span style="margin-left:auto"></span>
+        <span class="seg-label mock-only">Lists</span>
+        <div class="seg mock-only" role="group" aria-label="List layout">
+          <button type="button" data-layout="auto" aria-pressed="true">Auto</button>
+          <button type="button" data-layout="cards" aria-pressed="false">Cards</button>
+          <button type="button" data-layout="table" aria-pressed="false">Table</button>
+        </div>
+        <div class="seg mock-only" role="group" aria-label="Device">
+          <button type="button" data-device="desktop" aria-pressed="true">Desktop</button>
+          <button type="button" data-device="mobile" aria-pressed="false">Mobile</button>
+        </div>
+      </div>
+      <div class="stage" id="stage"></div>
+      <div class="inspect" id="inspect"><span>Hover any part of the mockup to see which field it came from.</span></div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ---------------- sample payloads ---------------- */
+const SAMPLES = {
+  webhook: { label: 'Payment webhook', json: {
+    id: 'evt_3Q1aBcLkdIwHu7ix0kzQ2mZf', object: 'event', api_version: '2024-06-20', created: 1759307412,
+    type: 'payment_intent.succeeded', livemode: false, pending_webhooks: 1,
+    request: { id: 'req_8sKx2LmQpZr4Tn', idempotency_key: 'a3f1c9e2-7b44-4d1a-9c0e-5f2b8d6e1a73' },
+    data: { object: {
+      id: 'pi_3Q1aBcLkdIwHu7ix0vNq8YtR', object: 'payment_intent', amount: 14900, amount_received: 14900, currency: 'usd',
+      status: 'succeeded', description: 'Team plan, annual billing (5 seats)', receipt_email: 'maya.ortiz@northwind-studio.com',
+      created: 1759307398, capture_method: 'automatic', payment_method: 'pm_1Q1aBXLkdIwHu7ixR4mKp2Vd', payment_method_types: ['card'],
+      customer: { id: 'cus_QxR7mZ2pLk9WvB', name: 'Maya Ortiz', email: 'maya.ortiz@northwind-studio.com', phone: '+1 415 555 0142',
+        address: { line1: '548 Market St', line2: 'Suite 300', city: 'San Francisco', state: 'CA', postal_code: '94104', country: 'US' } },
+      metadata: { order_id: 'ORD-20931', plan: 'team_annual', seats: 5 },
+      last_payment_error: null
+    } }
+  }},
+  order: { label: 'Order detail', json: {
+    order_number: 'WK-104882', status: 'in_transit', placed_at: '2026-09-27T14:32:10Z', estimated_delivery: '2026-10-03', currency: 'USD',
+    customer: { id: 88213, first_name: 'Jordan', last_name: 'Lee', email: 'jordan.lee@example.com', avatar_url: 'https://cdn.example.com/avatars/88213.jpg', is_member: true, lifetime_orders: 14 },
+    items: [
+      { sku: 'MUG-STN-12', name: 'Stoneware Mug, 12 oz', image_url: 'https://cdn.example.com/p/mug-stoneware.jpg', quantity: 2, unit_price: 18.5, color: '#3E5C76' },
+      { sku: 'PRS-FRN-34', name: 'French Press, 34 oz', image_url: 'https://cdn.example.com/p/french-press.jpg', quantity: 1, unit_price: 42.0, color: '#B8B8B8' },
+      { sku: 'BNS-ETH-1LB', name: 'Ethiopia Yirgacheffe Beans, 1 lb', image_url: 'https://cdn.example.com/p/beans-ethiopia.jpg', quantity: 1, unit_price: 21.0, color: '#6B4226' }
+    ],
+    subtotal: 100.0, shipping: 6.95, tax: 8.76, discount: -10.0, total: 105.71,
+    shipping_address: { name: 'Jordan Lee', line1: '2211 Elm Street', line2: 'Apt 4B', city: 'Austin', state: 'TX', postal_code: '78705', country: 'US' },
+    tracking: { carrier: 'UPS', tracking_number: '1Z999AA10123456784', tracking_url: 'https://track.example.com/1Z999AA10123456784', last_scan: 'Departed facility, Louisville KY', progress: 0.6 },
+    gift_message: 'Happy housewarming! Enjoy the new kitchen. See you at dinner on Saturday. Sam',
+    notes: null
+  }},
+  list: { label: 'Product list', json: {
+    data: [
+      { id: 'prod_9xK2LmQ4', object: 'product', name: 'Trail Runner 4', category: 'footwear', price: 129.0, currency: 'USD', rating: 4.6, review_count: 2381, stock_count: 42, thumbnail: 'https://cdn.example.com/p/trail-runner-4.jpg', is_featured: true, tags: ['waterproof', 'new'], status: 'active' },
+      { id: 'prod_7Hd3NpR8', object: 'product', name: 'Ultralight Rain Shell', category: 'outerwear', price: 189.0, currency: 'USD', rating: 4.8, review_count: 964, stock_count: 7, thumbnail: 'https://cdn.example.com/p/rain-shell.jpg', is_featured: false, tags: ['packable'], status: 'active' },
+      { id: 'prod_2Bq8TzW1', object: 'product', name: 'Merino Crew Socks, 3-pack', category: 'accessories', price: 36.0, currency: 'USD', rating: 4.3, review_count: 5120, stock_count: 0, thumbnail: 'https://cdn.example.com/p/merino-socks.jpg', is_featured: false, tags: ['bestseller', 'bundle'], status: 'out_of_stock' },
+      { id: 'prod_5Kc1VxE6', object: 'product', name: 'Insulated Bottle, 750 ml', category: 'accessories', price: 34.0, currency: 'USD', rating: 4.1, review_count: 318, stock_count: 120, thumbnail: 'https://cdn.example.com/p/bottle-750.jpg', is_featured: false, tags: [], status: 'draft' }
+    ],
+    page: 1, per_page: 4, total: 128, has_more: true, next_cursor: 'eyJwYWdlIjoyLCJzb3J0IjoicG9wdWxhciJ9'
+  }},
+  profile: { label: 'User profile', json: { user: {
+    id: '8f14e45f-ceea-467f-a0e6-4c2b1d3e9a10', username: 'priya.dev', display_name: 'Priya Raman', email: 'priya@example.com',
+    avatar_url: 'https://cdn.example.com/u/priya.png', bio: 'Staff engineer on the payments platform. Writes about API design, idempotency, and error messages people can act on.',
+    location: 'Bengaluru, India', website: 'https://priya.example.com', plan: 'pro', is_verified: true,
+    followers_count: 12840, following_count: 312, profile_completion: 0.85,
+    joined_at: '2021-03-14T09:20:00Z', last_active_at: '2026-09-30T18:05:00Z', brand_color: '#5B3CC4',
+    skills: ['TypeScript', 'Go', 'PostgreSQL', 'Kafka'], weekly_commits: [12, 18, 9, 22, 30, 26, 34, 28],
+    settings: { two_factor_enabled: true, email_notifications: false, language: 'en-IN', theme: 'system' },
+    teams: [ { id: 101, name: 'Payments Core', role: 'admin', member_count: 14 }, { id: 204, name: 'API Guild', role: 'member', member_count: 57 } ]
+  }}}
+};
+
+/* ---------------- helpers ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+const words = k => String(k).replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const has = (ws, list) => ws.some(w => list.includes(w));
+const trunc = (s, n) => (s = String(s)).length > n ? s.slice(0, n - 1) + '…' : s;
+const ACR = { id: 'ID', url: 'URL', uri: 'URI', api: 'API', sku: 'SKU', ip: 'IP', vat: 'VAT', sms: 'SMS', otp: 'OTP', usd: 'USD' };
+function humanize(k) {
+  const w = words(k); if (!w.length) return String(k);
+  const s = w.map(x => ACR[x] || x).join(' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const humanVal = v => { const s = String(v).replace(/[_-]+/g, ' ').trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
+const jp = (p, k) => typeof k === 'number' ? `${p}[${k}]` : (p ? `${p}.${k}` : String(k));
+const plural = s => /s$/i.test(s) ? s : /[^aeiou]y$/i.test(s) ? s.slice(0, -1) + 'ies' : s + 's';
+function hashHue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; }
+
+/* ---------------- field classification ---------------- */
+const TECH = new Set(['object','livemode','api_version','typename','links','etag','pending_webhooks','idempotency_key','request','signature','checksum','hash','client_secret','secret','token','access_token','refresh_token','cursor','next_cursor','prev_cursor','previous_cursor','v','self','href','schema','node_id']);
+const NAME_PRI = ['name','full_name','fullname','display_name','title','product_name','company_name','business_name','store_name','subject','headline','label','first_name','given_name','last_name','family_name'];
+const HANDLE = ['username','user_name','handle','login','screen_name','nickname'];
+const STATUSW = ['status','state','stage','phase','tier','plan','role','priority','level','type','kind','category','severity','outcome','visibility','method','brand','condition','availability','segment','channel','frequency','interval','environment','grade'];
+const REFW = ['number','reference','ref','sku','code','slug','confirmation','barcode','upc','isbn','serial'];
+const LONGW = ['description','bio','body','summary','content','message','notes','note','comment','about','details','text','excerpt','caption','instructions','review'];
+const MONEY = ['price','amount','cost','fee','fees','balance','tax','revenue','salary','refund','payout','spend','budget','subtotal','mrr','arr','ltv','charge','shipping','tip','discount','earnings','income','credit','debit','owed','due','premium','deposit','wage','gmv'];
+const COUNT = ['count','total','quantity','qty','stock','inventory','views','likes','followers','following','members','seats','downloads','visits','clicks','users','orders','items','sessions','comments','reviews','shares','subscribers','votes','points','attempts','retries','size','duration','age','days','hours','minutes','score','level','rank','position','streak','installs','stars','forks','watchers','impressions','conversions','signups','units','capacity','limit','remaining','used','page','per'];
+const DATEW = ['at','on','date','time','timestamp','created','updated','modified','expires','expiry','since','until','deadline','due','start','end','birthday','dob','ts','scheduled','published','deleted','completed','delivered','shipped','paid'];
+const IMGW = ['image','img','avatar','photo','picture','thumbnail','thumb','logo','icon','banner','cover','headshot','poster','images','photos','pfp'];
+const AVATARW = ['avatar','headshot','profile','pfp','gravatar'];
+const ADDR = new Set(['line1','line2','line_1','line_2','address1','address2','address_1','address_2','address_line1','address_line2','street','street1','street2','street_address','street_number','city','town','locality','state','province','region','county','postal_code','postcode','zip','zipcode','zip_code','country','country_code','district','neighborhood','suburb','apartment','unit','name','recipient']);
+const ZERO_DEC = new Set(['jpy','krw','vnd','clp','isk','ugx','xof','xaf','pyg','rwf','kmf','gnf','bif','djf','vuv','xpf','mga']);
+const ISO = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const IMGEXT = /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico)(\?.*)?$/i;
+const MACHINE_ID = /^(?:[a-z]{2,8}_[A-Za-z0-9]{8,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{24,}|[A-Za-z0-9+/=_-]{32,})$/i;
+const HUMAN_REF = /^[A-Z]{2,6}-?[A-Z0-9]{3,}$/;
+
+const KIND = {
+  title: 'Heading', handle: 'Username', email: 'Email', image: 'Image', avatar: 'Avatar', url: 'Link', phone: 'Phone number',
+  status: 'Status pill', boolean: 'On/off toggle', currency: 'Price', date: 'Date', count: 'Metric', percent: 'Progress bar',
+  rating: 'Star rating', color: 'Color swatch', coord: 'Coordinate', number: 'Number', text: 'Text', longtext: 'Paragraph',
+  ref: 'Reference code', code: 'Inline label', id: 'Hidden: record ID', technical: 'Hidden: system field', null: 'Empty state',
+  empty: 'Empty state', tags: 'Tag chips', gallery: 'Image gallery', series: 'Trend chart', list: 'List', mixed: 'Item count',
+  address: 'Address block', location: 'Map pin', moneyobj: 'Price', object: 'Section', addrpart: 'Address line'
+};
+const HIDDEN_KINDS = new Set(['id', 'technical']);
+
+const nkey = k => words(k).join('_');
+function isAddress(o) {
+  if (!isObj(o)) return false;
+  const ks = Object.keys(o).map(nkey);
+  return ks.filter(k => ADDR.has(k)).length >= 2 && ks.some(k => ['city','line1','street','address1','address_line1','street_address','postal_code','zip','postcode','zip_code'].includes(k));
+}
+const latKey = o => Object.keys(o).find(k => ['lat','latitude'].includes(nkey(k)));
+const lngKey = o => Object.keys(o).find(k => ['lng','lon','long','longitude'].includes(nkey(k)));
+const hasLatLng = o => isObj(o) && typeof o[latKey(o)] === 'number' && typeof o[lngKey(o)] === 'number';
+const isMoneyObj = o => { const ks = Object.keys(o).map(nkey); return ks.length <= 4 && ks.some(k => k === 'amount' || k === 'value') && ks.some(k => k.startsWith('currency')) && ks.every(k => ['amount','value','currency','currency_code','formatted','display'].includes(k)); };
+function curOf(o, inherited) {
+  if (!isObj(o)) return inherited;
+  const c = o.currency ?? o.currency_code ?? o.currencyCode;
+  return typeof c === 'string' && /^[A-Za-z]{3}$/.test(c) ? c : inherited;
+}
+const isDateKey = ws => has(ws, ['date', 'time', 'timestamp']) || DATEW.includes(ws[ws.length - 1]);
+
+function classify(k, v, parent, ctx = {}) {
+  const ws = words(k), nk = ws.join('_'), last = ws[ws.length - 1] || '';
+  const R = (kind, note = '', extra = {}) => ({ kind, label: KIND[kind], note, ...extra });
+  if (TECH.has(nk) && !(nk === 'object' && isObj(v))) return R('technical', 'Used by the system, not by people');
+  if (v === null || v === undefined) return R('null', 'No value in this payload');
+
+  if (Array.isArray(v)) {
+    if (!v.length) return R('empty', 'Empty list');
+    if (v.every(isObj)) return R('list', `${v.length} record${v.length > 1 ? 's' : ''}`);
+    if (v.every(x => typeof x === 'string' && (IMGEXT.test(x) || x.startsWith('data:image/')))) return R('gallery');
+    if (v.every(x => typeof x === 'number')) return v.length >= 3 ? R('series', `${v.length} data points`) : R('tags');
+    if (v.every(x => x === null || ['string', 'number', 'boolean'].includes(typeof x))) return R('tags');
+    return R('mixed');
+  }
+  if (isObj(v)) {
+    if (!Object.keys(v).length) return R('empty', 'Empty object');
+    if (isAddress(v)) return R('address');
+    if (hasLatLng(v)) return R('location');
+    if (isMoneyObj(v)) return R('moneyobj');
+    return R('object');
+  }
+  if (typeof v === 'boolean') return R('boolean');
+
+  if (typeof v === 'number') {
+    if (['lat', 'latitude', 'lng', 'lon', 'long', 'longitude'].includes(last)) return R('coord');
+    if (['id', 'uuid', 'guid'].includes(last)) return R('id', 'Numeric record ID');
+    if (has(ws, ['percent', 'percentage', 'pct'])) return R('percent');
+    if (has(ws, ['rate', 'ratio', 'progress', 'completion', 'utilization', 'conversion', 'share', 'completeness']) && v >= 0 && v <= 1) return R('percent', 'Fraction shown as a percentage');
+    if (has(ws, ['rating', 'stars']) && v >= 0 && v <= 5) return R('rating', 'Out of 5');
+    if (isDateKey(ws) && ((v > 9e8 && v < 5e9) || (v > 9e11 && v < 5e12))) return R('date', v < 5e9 ? 'Unix time in seconds' : 'Unix time in milliseconds');
+    const cur = ctx.currency;
+    if (has(ws, MONEY) || (last === 'total' && cur)) {
+      const lowerCode = cur && cur === cur.toLowerCase() && !ZERO_DEC.has(cur);
+      if (has(ws, ['cents', 'minor'])) return R('currency', 'Stored in cents, divided by 100', { minor: true });
+      if (Number.isInteger(v) && lowerCode && has(ws, ['amount', 'balance', 'subtotal', 'total', 'fee', 'tax', 'refund', 'payout', 'price'])) return R('currency', 'Whole number with a lowercase currency code: read as cents', { minor: true });
+      return R('currency', cur ? `Formatted as ${cur.toUpperCase()}` : 'No currency field found, assumed USD');
+    }
+    if (has(ws, COUNT) || (Number.isInteger(v) && /s$/.test(last) && last.length > 3)) return R('count');
+    return R('number');
+  }
+
+  const s = String(v).trim();
+  if (isAddress(parent) && ADDR.has(nk)) return R('addrpart');
+  if (['id', 'uuid', 'guid'].includes(last) || nk === 'key') return HUMAN_REF.test(s) ? R('ref', 'Readable ID, shown to people') : R('id', 'Internal identifier');
+  if (!s) return R('null', 'Empty string');
+  if (EMAIL.test(s)) return R('email');
+  if (/^https?:\/\//i.test(s) || s.startsWith('data:image/')) {
+    if (IMGEXT.test(s) || has(ws, IMGW) || s.startsWith('data:image/')) return R(has(ws, AVATARW) ? 'avatar' : 'image');
+    return R('url');
+  }
+  if (/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s)) return R('color');
+  if (ISO.test(s) && !isNaN(Date.parse(s))) return R('date', s.length === 10 ? 'Calendar date' : 'ISO 8601 timestamp');
+  if (has(ws, ['phone', 'mobile', 'tel', 'telephone', 'fax'])) return R('phone');
+  if (has(ws, ['currency']) && /^[a-z]{3}$/i.test(s)) return R('code', 'Currency code, used to format prices');
+  if (has(ws, ['country', 'locale', 'language', 'lang', 'timezone'])) return R('code');
+  if (MACHINE_ID.test(s)) return R('id', 'Looks like a link to another record');
+  if (NAME_PRI.includes(nk)) return R('title');
+  if (HANDLE.includes(nk)) return R('handle');
+  if (STATUSW.includes(last) && s.length <= 32) return R('status');
+  if (REFW.includes(last)) return R('ref');
+  if (s.length > 90 || has(ws, LONGW)) return R('longtext');
+  return R('text');
+}
+
+/* ---------------- formatting ---------------- */
+function money(n, code) {
+  code = (code || 'USD').toUpperCase();
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: code }).format(n); }
+  catch { return `${Number(n).toLocaleString()} ${code}`; }
+}
+function toDate(v) {
+  if (typeof v === 'number') return new Date(v < 5e9 ? v * 1000 : v);
+  return new Date(v);
+}
+function fmtDate(v) {
+  const d = toDate(v);
+  if (typeof v === 'string' && v.length === 10) return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+function rel(v) {
+  const d = toDate(v), s = (d - Date.now()) / 1000, a = Math.abs(s);
+  const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
+  try {
+    const f = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+    for (const [u, n] of units) if (a >= n) return f.format(Math.round(s / n), u);
+    return f.format(0, 'minute');
+  } catch { return ''; }
+}
+const fmtCount = n => new Intl.NumberFormat(undefined, { notation: Math.abs(n) >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(n);
+function pctOf(k, v) { return has(words(k), ['percent', 'percentage', 'pct']) ? v : (v <= 1 ? v * 100 : v); }
+function tone(v) {
+  const s = String(v).toLowerCase().replace(/[\s-]+/g, '_');
+  if (/^(succeeded|success|successful|paid|active|complete|completed|delivered|approved|verified|enabled|published|resolved|done|live|healthy|accepted|fulfilled|shipped|available|in_stock|online|confirmed|settled|won|passed|ok)$/.test(s)) return 'good';
+  if (/^(pending|processing|in_progress|in_transit|out_for_delivery|trialing|trial|draft|review|in_review|awaiting|scheduled|partial|partially_refunded|requires_action|requires_payment_method|requires_confirmation|requires_capture|on_hold|low_stock|queued|unpaid|incomplete|backorder|backordered|paused|waiting|open|new)$/.test(s)) return 'warn';
+  if (/^(failed|failure|canceled|cancelled|declined|error|past_due|refunded|overdue|blocked|rejected|expired|disputed|lost|suspended|inactive|disabled|closed|out_of_stock|offline|deleted|unhealthy|fraudulent|void|voided|archived|denied|banned)$/.test(s)) return 'bad';
+  return '';
+}
+const pill = (v, plain) => `<span class="m-pill ${tone(v)}${plain || !tone(v) ? ' plain' : ''}">${esc(humanVal(v))}</span>`;
+function addrLines(o) {
+  const g = names => { for (const [k, v] of Object.entries(o)) if (names.includes(nkey(k)) && v != null && v !== '') return String(v); return ''; };
+  const street = [g(['line1','line_1','address1','address_1','address_line1','street','street1','street_address']), g(['line2','line_2','address2','address_2','address_line2','street2','apartment','unit'])].filter(Boolean).join(', ');
+  const cityLine = [g(['city','town','locality']), [g(['state','province','region','county']), g(['postal_code','postcode','zip','zipcode','zip_code'])].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return [g(['name','recipient']), street, cityLine, g(['country','country_code'])].filter(Boolean);
+}
+const IMG_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>';
+function initials(t) { const w = String(t || '').trim().split(/\s+/).filter(Boolean); return esc(((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase()); }
+function imgEl(f, cls, name) {
+  const avatar = f.c.kind === 'avatar' || cls.includes('avatar');
+  return `<span class="m-img ${cls}${avatar ? ' avatar' : ''}" style="--h:${hashHue(f.v)}"${attr(f)} title="${esc(f.v)}">${avatar ? initials(name) : IMG_ICON}<img src="${esc(f.v)}" alt=""></span>`;
+}
+function attr(f, label) {
+  const lab = label || f.c.label;
+  return ` data-path="${esc(f.p)}" data-label="${esc(lab)}"${f.c.note ? ` data-note="${esc(f.c.note)}"` : ''}`;
+}
+function spark(nums) {
+  const W = 200, H = 48, min = Math.min(...nums), max = Math.max(...nums), span = max - min || 1;
+  const pts = nums.map((n, i) => [i * W / (nums.length - 1), H - 4 - (n - min) / span * (H - 8)]);
+  const line = pts.map(p => p.map(x => x.toFixed(1)).join(',')).join(' ');
+  const [lx, ly] = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,${H} L${line.replace(/ /g, ' L')} L${W},${H} Z" fill="var(--m-brand-soft)"/>
+    <polyline points="${line}" fill="none" stroke="var(--m-brand)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    <circle cx="${lx}" cy="${ly}" r="3.5" fill="var(--m-brand)" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+/* value renderer for one scalar-ish field */
+function val(f, ctx) {
+  const { k, v, c } = f;
+  switch (c.kind) {
+    case 'currency': { const n = c.minor ? v / 100 : v; return `<span class="m-money${n < 0 ? ' neg' : ''}">${esc(money(n, ctx.currency))}</span>`; }
+    case 'moneyobj': { const n = parseFloat(v.amount ?? v.value); return `<span class="m-money">${esc(money(n, v.currency || v.currency_code))}</span>`; }
+    case 'date': return `<span>${esc(fmtDate(v))}</span><span class="m-rel">${esc(rel(v))}</span>`;
+    case 'email': return `<span class="m-link">${esc(v)}</span>`;
+    case 'url': { let lab = v; try { const u = new URL(v); lab = u.hostname.replace(/^www\./, '') + (u.pathname.length > 1 ? u.pathname : ''); } catch {} return `<a class="m-link" href="${esc(v)}" target="_blank" rel="noopener">${esc(trunc(lab, 42))}</a>`; }
+    case 'status': return pill(v);
+    case 'boolean': return `<span class="m-switch${v ? ' on' : ''}"><i></i></span><span class="m-switch-t">${v ? 'On' : 'Off'}</span>`;
+    case 'percent': { const p = Math.max(0, Math.min(100, pctOf(k, v))); return `<span class="m-bar"><i style="width:${p}%"></i></span><span class="m-money">${Math.round(pctOf(k, v) * 10) / 10}%</span>`; }
+    case 'rating': return stars(v);
+    case 'color': return `<span class="m-swatch" style="background:${esc(v)}"></span><span class="m-mono">${esc(String(v).toUpperCase())}</span>`;
+    case 'count': return `<span class="m-money">${esc(fmtCount(v))}</span>`;
+    case 'number': return `<span class="m-money">${esc(Number(v).toLocaleString())}</span>`;
+    case 'coord': return `<span class="m-money">${esc(Number(v).toFixed(4))}°</span>`;
+    case 'ref': return `<span class="m-mono">${esc(v)}</span>`;
+    case 'code': return `<span class="m-code">${esc(String(v).toUpperCase())}</span>`;
+    case 'handle': return `<span>@${esc(String(v).replace(/^@/, ''))}</span>`;
+    case 'null': return `<span class="m-none">Not set</span>`;
+    case 'empty': return `<span class="m-none">None</span>`;
+    case 'tags': return `<span class="m-tags">${v.filter(x => x != null).map(x => `<span class="m-tag">${esc(x)}</span>`).join('')}</span>`;
+    case 'image': case 'avatar': return imgEl(f, 'thumb', '');
+    case 'address': return `<span class="m-addr">${addrLines(v).map(l => `<span>${esc(l)}</span>`).join('')}</span>`;
+    case 'location': return `<span class="m-pin"><span class="map"></span><span class="m-mono">${esc(v[latKey(v)].toFixed(4))}, ${esc(v[lngKey(v)].toFixed(4))}</span></span>`;
+    case 'mixed': return `<span>${v.length} items</span>`;
+    case 'list': return `<span>${v.length} records</span>`;
+    case 'object': return `<span class="m-none">${Object.keys(v).length} fields</span>`;
+    default: return esc(v);
+  }
+}
+function stars(v) {
+  const full = Math.round(v);
+  return `<span class="m-stars" aria-label="${v} out of 5">${'★'.repeat(full)}<span class="off">${'★'.repeat(5 - full)}</span><b>${esc(v.toFixed(1))}</b></span>`;
+}
+function metricLabel(k) {
+  const w = words(k);
+  if (w.length > 1 && ['count', 'total'].includes(w[w.length - 1]) && /s$/.test(w[w.length - 2])) return humanize(w.slice(0, -1).join('_'));
+  return humanize(k);
+}
+
+/* ---------------- entity analysis ---------------- */
+const METRIC_KINDS = new Set(['currency', 'moneyobj', 'count', 'percent', 'rating']);
+function analyze(obj, path, ctx) {
+  const A = { titles: [], handle: null, email: null, image: null, status: [], metrics: [], details: [], long: [], tags: [], series: [], gallery: [], lists: [], objects: [], hidden: [], refs: [], type: null };
+  for (const [k, v] of Object.entries(obj)) {
+    const f = { k, v, p: jp(path, k), c: classify(k, v, obj, ctx) };
+    const K = f.c.kind;
+    if (HIDDEN_KINDS.has(K)) A.hidden.push(f);
+    else if (K === 'title') A.titles.push(f);
+    else if (K === 'handle' && !A.handle) A.handle = f;
+    else if (K === 'email' && !A.email) A.email = f;
+    else if ((K === 'image' || K === 'avatar') && !A.image) A.image = f;
+    else if (K === 'status') A.status.push(f);
+    else if (METRIC_KINDS.has(K)) A.metrics.push(f);
+    else if (K === 'longtext') A.long.push(f);
+    else if (K === 'tags') A.tags.push(f);
+    else if (K === 'series') A.series.push(f);
+    else if (K === 'gallery') A.gallery.push(f);
+    else if (K === 'list') A.lists.push(f);
+    else if (K === 'object') A.objects.push(f);
+    else { if (K === 'ref') A.refs.push(f); A.details.push(f); }
+  }
+  const typeKey = ['object', '__typename', 'entity', 'resource_type'].find(k => typeof obj[k] === 'string');
+  if (typeKey) A.type = humanVal(obj[typeKey]);
+
+  const first = A.titles.find(t => /^(first|given)/.test(nkey(t.k))), lastN = A.titles.find(t => /^(last|family)/.test(nkey(t.k)));
+  if (first && lastN) {
+    A.title = { html: esc(`${first.v} ${lastN.v}`), text: `${first.v} ${lastN.v}`, f: first, label: 'Heading (first + last name)' };
+    A.titles = A.titles.filter(t => t !== first && t !== lastN);
+  } else if (A.titles.length) {
+    A.titles.sort((a, b) => NAME_PRI.indexOf(nkey(a.k)) - NAME_PRI.indexOf(nkey(b.k)));
+    const t = A.titles.shift();
+    A.title = { html: esc(t.v), text: String(t.v), f: t };
+  }
+  A.details.unshift(...A.titles.map(t => ({ ...t, c: { ...t.c, kind: 'text', label: 'Text' } })));
+
+  // money-first sort so totals lead the stat row
+  const rank = f => { const w = words(f.k); return f.c.kind === 'currency' || f.c.kind === 'moneyobj' ? (has(w, ['total', 'amount']) ? 0 : 1) : 2; };
+  A.metrics.sort((a, b) => rank(a) - rank(b));
+
+  if (!A.title && A.refs.length) {
+    const r = A.refs[0];
+    A.title = { html: esc(r.v), text: String(r.v), f: r };
+    A.details = A.details.filter(d => d !== r);
+    if (!A.type) { const w = words(r.k).filter(x => !REFW.includes(x) && x !== 'id'); if (w.length) A.type = humanize(w.join('_')); }
+  }
+  if (!A.title && A.metrics.length && ['currency', 'moneyobj'].includes(A.metrics[0].c.kind)) {
+    const m = A.metrics.shift();
+    A.title = { html: val(m, ctx), text: '', f: m };
+    if (!A.handle && !A.email && A.long.length && String(A.long[0].v).length <= 120) A.subLong = A.long.shift();
+  }
+  return A;
+}
+
+/* ---------------- renderers ---------------- */
+let state = { view: 'mockup', device: 'desktop', layout: 'auto', data: undefined, overrides: {} };
+const MAXDEPTH = 4;
+
+function headerHtml(A, ctx, depth) {
+  const img = A.image ? imgEl(A.image, depth === 0 ? (A.image.c.kind === 'avatar' ? '' : 'cover') : 'sm', A.title?.text) : '';
+  const sub = A.handle ? `<div class="m-sub"${attr(A.handle)}>@${esc(String(A.handle.v).replace(/^@/, ''))}</div>`
+    : A.email ? `<div class="m-sub"${attr(A.email)}>${esc(A.email.v)}</div>`
+    : A.subLong ? `<div class="m-sub"${attr(A.subLong, 'Subtitle')}>${esc(A.subLong.v)}</div>` : '';
+  const badges = A.status.map(s => `<span${attr(s)}>${pill(s.v)}</span>`).join('');
+  const title = A.title ? `<h${depth === 0 ? 2 : 4} class="m-title"${attr(A.title.f, A.title.label)}>${A.title.html}</h${depth === 0 ? 2 : 4}>` : '';
+  const eyebrow = A.type && depth === 0 ? `<div class="m-eyebrow">${esc(A.type)}</div>` : '';
+  if (!img && !title && !sub && !badges) return '';
+  const inner = `${img}<div class="m-head-t">${eyebrow}${title}${sub}</div>${badges ? `<div class="m-badges">${badges}</div>` : ''}`;
+  return depth === 0 ? `<header class="m-head">${inner}</header>` : `<div class="m-mini">${inner}</div>`;
+}
+
+function statsHtml(list, ctx) {
+  return `<div class="m-stats">${list.map(f => `<div class="m-stat"${attr(f)}><span class="l">${esc(metricLabel(f.k))}</span><span class="v">${f.c.kind === 'percent' ? `${Math.round(pctOf(f.k, f.v))}%` : f.c.kind === 'rating' ? stars(f.v) : val(f, ctx)}</span></div>`).join('')}</div>`;
+}
+function dlHtml(fields, ctx) {
+  if (!fields.length) return '';
+  return `<dl class="m-dl">${fields.map(f => `<dt>${esc(f.c.kind === 'count' ? metricLabel(f.k) : humanize(f.k))}</dt><dd${attr(f)}>${val(f, ctx)}</dd>`).join('')}</dl>`;
+}
+function devHtml(hidden) {
+  if (!hidden.length) return '';
+  const show = v => isObj(v) ? `{ ${Object.keys(v).length} fields }` : Array.isArray(v) ? `[ ${v.length} ]` : trunc(JSON.stringify(v), 48);
+  return `<details class="m-dev"><summary>Developer fields: ${hidden.length} hidden from users</summary><dl class="m-dl">${hidden.map(f => `<dt>${esc(humanize(f.k))}</dt><dd${attr(f)}>${esc(show(f.v))}</dd>`).join('')}</dl></details>`;
+}
+
+function renderEntity(obj, path, depth, ctx, heading) {
+  ctx = { ...ctx, currency: curOf(obj, ctx.currency) };
+  if (depth > MAXDEPTH) return `<span class="m-none">${Object.keys(obj).length} more fields</span>`;
+  const A = analyze(obj, path, ctx);
+  const root = depth === 0;
+  const parts = [];
+  const head = headerHtml(A, ctx, depth);
+
+  // root keeps up to 4 metric tiles; nested sections show them inline
+  let metrics = A.metrics, details = A.details;
+  if (root) { metrics = A.metrics.slice(0, 4); details = [...A.details, ...A.metrics.slice(4)]; }
+  else { details = [...A.metrics, ...A.details]; metrics = []; }
+
+  const body = [];
+  const detailsHtml = dlHtml(details, ctx);
+  if (root) {
+    if (detailsHtml) body.push(`<section class="m-card"><h3>Details</h3>${detailsHtml}</section>`);
+    A.long.forEach(f => body.push(`<section class="m-card"><h3>${esc(humanize(f.k))}</h3><p class="m-p"${attr(f)}>${esc(f.v)}</p></section>`));
+    A.tags.forEach(f => body.push(`<section class="m-card"><h3>${esc(humanize(f.k))}</h3><div${attr(f)}>${val(f, ctx)}</div></section>`));
+    A.series.forEach(f => body.push(sparkCard(f)));
+    A.gallery.forEach(f => body.push(galleryCard(f)));
+    A.objects.forEach(f => body.push(`<section class="m-card">${renderEntity(f.v, f.p, depth + 1, ctx, humanize(f.k))}</section>`));
+    A.lists.forEach(f => body.push(`<section class="m-card full">${listHeading(f)}${renderList(f.v, f.p, depth + 1, ctx)}</section>`));
+  } else {
+    if (detailsHtml) body.push(detailsHtml);
+    A.long.forEach(f => body.push(`<p class="m-p"${attr(f)}>${esc(f.v)}</p>`));
+    A.tags.forEach(f => body.push(`<div${attr(f)}>${val(f, ctx)}</div>`));
+    A.series.forEach(f => body.push(sparkCard(f)));
+    A.gallery.forEach(f => body.push(galleryCard(f)));
+    A.objects.forEach(f => body.push(`<section class="m-card">${renderEntity(f.v, f.p, depth + 1, ctx, humanize(f.k))}</section>`));
+    A.lists.forEach(f => body.push(`<div>${listHeading(f)}${renderList(f.v, f.p, depth + 1, ctx)}</div>`));
+  }
+
+  if (root) {
+    if (head) parts.push(head);
+    if (metrics.length) parts.push(statsHtml(metrics, ctx));
+    if (body.length) parts.push(`<div class="m-body">${body.join('')}</div>`);
+    parts.push(devHtml(A.hidden));
+    return `<article class="m-entity">${parts.join('')}</article>`;
+  }
+  return `${heading ? `<h3 class="m-sec-h" data-path="${esc(path)}" data-label="Section">${esc(heading)}</h3>` : ''}${head}${body.join('')}${devHtml(A.hidden)}`;
+}
+function listHeading(f) { return `<h3 class="m-sec-h" style="margin-bottom:10px"${attr(f)}>${esc(humanize(f.k))} <span class="n">${f.v.length}</span></h3>`; }
+function sparkCard(f) {
+  const v = f.v, lastV = v[v.length - 1], prev = v[v.length - 2], d = lastV - prev;
+  return `<section class="m-card"><h3>${esc(humanize(f.k))}</h3><div class="m-spark"${attr(f)}>${spark(v)}<span class="meta"><b>${esc(fmtCount(lastV))}</b>${d >= 0 ? '+' : ''}${esc(fmtCount(d))} vs previous</span></div></section>`;
+}
+function galleryCard(f) {
+  return `<section class="m-card"><h3>${esc(humanize(f.k))} <span class="n">${f.v.length}</span></h3><div class="m-gallery">${f.v.slice(0, 12).map((u, i) => imgEl({ k: f.k, v: u, p: jp(f.p, i), c: { kind: 'image', label: 'Image', note: '' } }, '', '')).join('')}</div></section>`;
+}
+
+/* columns shared by table and field map: union of keys, typed by first non-null value */
+function mergedFields(items) {
+  const m = new Map();
+  for (const it of items.slice(0, 25)) for (const [k, v] of Object.entries(it)) if (!m.has(k) || (m.get(k).v == null && v != null)) m.set(k, { v, parent: it });
+  return m;
+}
+function renderList(items, path, depth, ctx) {
+  const shown = items.slice(0, 50);
+  const cols = [...mergedFields(shown)].map(([k, { v, parent }]) => ({ k, c: classify(k, v, parent, { currency: curOf(parent, ctx.currency) }) }));
+  const hasImg = cols.some(c => ['image', 'avatar'].includes(c.c.kind));
+  let mode = state.layout;
+  if (mode === 'auto') mode = (state.device === "mobile" || (depth === 0 && hasImg)) ? 'cards' : 'table';
+  const more = items.length > shown.length ? `<div class="m-more">Showing ${shown.length} of ${items.length}</div>` : '';
+  return (mode === 'cards' ? cardsHtml(shown, path, ctx) : tableHtml(shown, cols, path, ctx)) + more;
+}
+function tableHtml(items, cols, path, ctx) {
+  const usable = cols.filter(c => !HIDDEN_KINDS.has(c.c.kind) && !['object', 'list', 'longtext', 'mixed', 'series', 'gallery'].includes(c.c.kind));
+  const img = usable.find(c => ['image', 'avatar'].includes(c.c.kind));
+  const titleC = usable.find(c => c.c.kind === 'title') || usable.find(c => c.c.kind === 'ref') || usable.find(c => c.c.kind === 'text');
+  let rest = usable.filter(c => c !== img && c !== titleC);
+  rest = rest.slice(0, titleC ? 6 : 7);
+  const numeric = c => ['currency', 'moneyobj', 'count', 'number'].includes(c.c.kind);
+  const th = [titleC ? `<th>${esc(humanize(titleC.k))}</th>` : '', ...rest.map(c => `<th class="${numeric(c) ? 'num' : ''}">${esc(c.c.kind === 'count' ? metricLabel(c.k) : humanize(c.k))}</th>`)].join('');
+  const rows = items.map((it, i) => {
+    const ictx = { currency: curOf(it, ctx.currency) };
+    const F = k => ({ k, v: it[k], p: jp(jp(path, i), k), c: classify(k, it[k], it, ictx) });
+    const cell = c => { const f = F(c.k); return `<td class="${numeric(c) ? 'num' : ''}"><span${attr(f)}>${val(f, ictx)}</span></td>`; };
+    let first = '';
+    if (titleC) {
+      const f = F(titleC.k), im = img && it[img.k] ? imgEl(F(img.k), 'thumb', it[titleC.k]) : '';
+      first = `<td><span class="cell">${im}<span${attr(f)} style="font-weight:500">${esc(f.v ?? '')}</span></span></td>`;
+    }
+    return `<tr>${first}${rest.map(cell).join('')}</tr>`;
+  }).join('');
+  return `<div class="m-tablewrap"><table class="m-table"><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function cardsHtml(items, path, ctx) {
+  return `<div class="m-grid">${items.map((it, i) => {
+    const p = jp(path, i), ictx = { currency: curOf(it, ctx.currency) };
+    const A = analyze(it, p, ictx);
+    const isAvatar = A.image && A.image.c.kind === 'avatar';
+    const cover = A.image && !isAvatar ? imgEl(A.image, 'card', '') : '';
+    const av = isAvatar ? imgEl(A.image, 'thumb', A.title?.text) : '';
+    const top = A.status.map(s => `<span${attr(s)}>${pill(s.v)}</span>`).join('');
+    const sub = A.handle ? `<div class="m-item-s"${attr(A.handle)}>@${esc(A.handle.v)}</div>` : A.email ? `<div class="m-item-s"${attr(A.email)}>${esc(A.email.v)}</div>` : A.long[0] ? `<div class="m-item-s"${attr(A.long[0])}>${esc(trunc(A.long[0].v, 110))}</div>` : '';
+    const mets = A.metrics.slice(0, 3).map(f => `<span${attr(f)}>${f.c.kind === 'count' ? `${val(f, ictx)} <span class="m-rel">${esc(metricLabel(f.k).toLowerCase())}</span>` : val(f, ictx)}</span>`).join('');
+    const tags = A.tags.filter(t => t.v.length).slice(0, 1).map(f => `<div${attr(f)}>${val(f, ictx)}</div>`).join('');
+    const det = [...A.metrics.slice(3), ...A.details].slice(0, 3).map(f => `<span${attr(f)}>${esc(humanize(f.k))}: <b>${val(f, ictx)}</b></span>`).join('');
+    const title = A.title ? `<div class="m-item-t"${attr(A.title.f, A.title.label)}>${A.title.html}</div>` : '';
+    return `<div class="m-item">${cover}<div class="m-item-b">${top ? `<div class="m-item-top">${top}</div>` : ''}${av ? `<div class="m-item-row">${av}<div>${title}${sub}</div></div>` : title + sub}${mets ? `<div class="m-item-m">${mets}</div>` : ''}${tags}${det ? `<div class="m-item-d">${det}</div>` : ''}</div></div>`;
+  }).join('')}</div>`;
+}
+
+/* ---------------- payload shape ---------------- */
+const LIST_KEYS = ['data', 'items', 'results', 'records', 'entries', 'nodes', 'rows', 'list', 'hits', 'docs', 'objects', 'values', 'collection', 'content'];
+function flatMeta(o, p, out = {}) {
+  for (const [k, v] of Object.entries(o || {})) { if (isObj(v)) flatMeta(v, jp(p, k), out); else out[nkey(k)] = { v, p: jp(p, k) }; }
+  return out;
+}
+function detectShape(j) {
+  if (Array.isArray(j)) return j.every(isObj) && j.length ? { shape: 'collection', items: j, path: '', meta: {}, metaPaths: [] } : { shape: 'scalar' };
+  if (!isObj(j)) return { shape: 'scalar' };
+  const evKey = ['type', 'event', 'event_type', 'eventType', 'topic', 'event_name'].find(k => typeof j[k] === 'string' && /[._:/]/.test(j[k]));
+  const payKey = ['data', 'payload', 'resource', 'body', 'detail', 'object'].find(k => isObj(j[k]));
+  if (evKey && payKey) {
+    let obj = j[payKey], p = payKey;
+    if (isObj(obj.object)) { obj = obj.object; p += '.object'; }
+    else { const ks = Object.keys(obj); if (ks.length === 1 && isObj(obj[ks[0]])) { obj = obj[ks[0]]; p = jp(p, ks[0]); } }
+    return { shape: 'event', evKey, obj, path: p, root: j };
+  }
+  const keys = Object.keys(j);
+  const listKey = LIST_KEYS.find(k => Array.isArray(j[k]) && j[k].length && j[k].every(isObj)) ||
+    (() => { const arrs = keys.filter(k => Array.isArray(j[k]) && j[k].length && j[k].every(isObj)); return arrs.length === 1 && keys.every(k => k === arrs[0] || !isObj(j[k]) || /meta|pag|links/i.test(k)) && keys.length <= 8 ? arrs[0] : null; })();
+  if (listKey) {
+    const metaPaths = keys.filter(k => k !== listKey).map(k => k);
+    const meta = flatMeta(Object.fromEntries(keys.filter(k => k !== listKey).map(k => [k, j[k]])), '');
+    return { shape: 'collection', items: j[listKey], path: listKey, listKey, meta, metaPaths };
+  }
+  if (keys.length === 1 && isObj(j[keys[0]])) return { shape: 'entity', obj: j[keys[0]], path: keys[0], wrapKey: keys[0] };
+  return { shape: 'entity', obj: j, path: '' };
+}
+
+function appbar(section, leaf) {
+  return `<div class="m-appbar"><span class="m-logo"></span><span class="m-crumbs"><b>${esc(section)}</b>${leaf ? `<i>/</i>${esc(trunc(leaf, 34))}` : ''}</span><span class="m-me"></span></div>`;
+}
+function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+
+function renderMock(j) {
+  const S = detectShape(j);
+  state.shape = S; state.overrides = {};
+  let section = 'Records', leaf = '', main = '';
+  if (S.shape === 'scalar') {
+    main = `<div class="m-card"><span class="m-kicker">Value</span><div class="m-title">${esc(JSON.stringify(j))}</div></div>`;
+  } else if (S.shape === 'collection') {
+    const t = S.items.find(it => typeof it.object === 'string' || typeof it.type === 'string');
+    const noun = S.listKey && !LIST_KEYS.includes(S.listKey) ? humanize(S.listKey) : t && typeof t.object === 'string' ? plural(humanVal(t.object)) : 'Results';
+    section = noun;
+    const M = S.meta, pick = names => { for (const n of names) if (M[n] !== undefined) return M[n]; return null; };
+    const total = pick(['total', 'total_count', 'totalcount', 'count', 'total_results', 'total_items', 'total_entries', 'total_hits']);
+    const page = pick(['page', 'current_page', 'page_number', 'pagenumber']);
+    const per = pick(['per_page', 'limit', 'page_size', 'pagesize', 'size']);
+    const more = pick(['has_more', 'has_next_page', 'hasnextpage', 'has_next', 'next_cursor', 'next', 'next_page_url', 'next_page']);
+    for (const [k, o] of Object.entries(M)) state.overrides[o.p] = { label: 'Pagination', note: 'Drives result count and page controls' };
+    if (total) state.overrides[total.p] = { label: 'Result count', note: 'Shown next to the page title' };
+    const n = typeof total?.v === 'number' ? total.v : S.items.length;
+    const ctx = {};
+    const cols = [...mergedFields(S.items)].map(([k, { v, parent }]) => ({ k, c: classify(k, v, parent, ctx) }));
+    const fcol = cols.find(c => c.c.kind === 'status' && words(c.k).some(w => ['category', 'type', 'kind', 'segment'].includes(w))) || cols.find(c => c.c.kind === 'status');
+    let filters = '';
+    if (fcol) {
+      const vals = [...new Set(S.items.map(it => it[fcol.k]).filter(v => typeof v === 'string'))].slice(0, 6);
+      filters = `<div class="m-filters" data-path="${esc(jp(S.path, '[]') + '.' + fcol.k)}" data-label="Filter chips" data-note="Built from the distinct values of this field"><span class="m-filter on">All</span>${vals.map(v => `<span class="m-filter">${esc(humanVal(v))}</span>`).join('')}</div>`;
+    }
+    const pg = typeof page?.v === 'number' ? page.v : 1, pp = typeof per?.v === 'number' ? per.v : S.items.length;
+    const from = (pg - 1) * pp + 1, to = from + S.items.length - 1;
+    const hasMore = more ? !!more.v : (typeof total?.v === 'number' && to < total.v);
+    main = `<div class="m-toolbar"><h1>${esc(noun)}</h1><span class="cnt"${total ? ` data-path="${esc(total.p)}" data-label="Result count"` : ''}>${esc(fmtCount(n))} ${n === 1 ? 'result' : 'results'}</span><span class="m-search">Search ${esc(noun.toLowerCase())}…</span></div>
+      ${filters}${renderList(S.items, S.path, 0, ctx)}
+      ${(total || page || more) ? `<div class="m-pager"><span>Showing ${from}–${to}${typeof total?.v === 'number' ? ` of ${esc(total.v.toLocaleString())}` : ''}</span><span class="pg"><span class="${pg <= 1 ? 'dis' : ''}">Previous</span><span${page ? ` data-path="${esc(page.p)}" data-label="Current page"` : ''}>Page ${pg}</span><span class="${hasMore ? '' : 'dis'}"${more ? ` data-path="${esc(more.p)}" data-label="Next page button" data-note="Enabled when there are more results"` : ''}>Next</span></span></div>` : ''}`;
+  } else {
+    const obj = S.obj;
+    const A = analyze(obj, S.path, { currency: curOf(obj) });
+    section = A.type ? plural(A.type) : S.wrapKey ? plural(humanize(S.wrapKey)) : 'Records';
+    leaf = A.title?.text || (A.hidden.find(h => h.k === 'id')?.v ?? '');
+    let toast = '';
+    if (S.shape === 'event') {
+      const ev = S.root, evType = String(ev[S.evKey]);
+      const segs = evType.split(/[._:/]+/).filter(Boolean);
+      const lastSeg = segs[segs.length - 1] || '';
+      const tn = tone(lastSeg);
+      const title = humanVal(segs.join(' '));
+      state.overrides[S.evKey] = { label: 'Notification title', note: `"${evType}" becomes "${title}"` };
+      const timeKey = ['created', 'created_at', 'timestamp', 'occurred_at', 'time', 'event_time', 'createdAt'].find(k => ev[k] != null);
+      if (timeKey) state.overrides[timeKey] = { label: 'Notification time', note: '' };
+      const ctx = { currency: curOf(obj) };
+      const bits = [];
+      const m = A.metrics.find(f => ['currency', 'moneyobj'].includes(f.c.kind)) || (A.title && ['currency', 'moneyobj'].includes(A.title.f.c.kind) ? A.title.f : null);
+      if (m) bits.push(val(m, ctx).replace(/<[^>]+>/g, ''));
+      const who = (A.title && A.title.text) || (A.email && A.email.v) || A.objects.map(o => o.v.name || o.v.email).find(Boolean);
+      if (who) bits.push(esc(who));
+      const ic = tn === 'good' ? '✓' : tn === 'bad' ? '!' : '•';
+      toast = `<div class="m-kicker">Notification</div><div class="m-toast" data-path="${esc(S.evKey)}" data-label="Notification" data-note="${esc(`"${evType}" becomes "${title}"`)}"><span class="ic m-pill ${tn} plain" style="padding:0">${ic}</span><div><div class="tt">${esc(title)}</div><div class="tb">${bits.join(' · ') || esc(section)}</div></div><span class="tm"${timeKey ? ` data-path="${esc(timeKey)}" data-label="Notification time"` : ''}>${timeKey ? esc(rel(ev[timeKey])) : 'just now'}</span></div><div class="m-kicker">Detail page</div>`;
+    }
+    main = toast + renderEntity(obj, S.path, 0, {});
+  }
+  const url = `app.example.com/${slug(section)}${leaf && S.shape !== 'collection' ? '/' + slug(leaf).slice(0, 24) : ''}`;
+  const mobile = state.device === 'mobile';
+  const chrome = mobile
+    ? `<div class="m-chrome"><span>9:41</span><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span></div>`
+    : `<div class="m-chrome"><span class="dots"><i></i><i></i><i></i></span><span class="m-url">${esc(url)}</span></div>`;
+  return `<div class="m-frame ${mobile ? 'mobile' : 'desktop'}">${chrome}<div class="m-root">${appbar(section, S.shape === 'collection' ? '' : leaf)}<div class="m-main">${main}</div></div></div>`;
+}
+
+/* ---------------- field map ---------------- */
+function typeOf(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return `array (${v.length})`;
+  if (typeof v === 'number') return Number.isInteger(v) ? 'integer' : 'decimal';
+  return typeof v;
+}
+function walk(v, path, key, parent, ctx, out, inheritHidden) {
+  const c = key == null ? null : classify(key, v, parent, ctx);
+  const hidden = inheritHidden || (c && HIDDEN_KINDS.has(c.kind));
+  const push = () => out.push({ path, v, c, vis: hidden ? 'hidden' : (c.kind === 'null' || c.kind === 'empty') ? 'empty' : 'shown' });
+  if (c && ['address', 'location', 'moneyobj', 'tags', 'series', 'gallery', 'empty', 'mixed'].includes(c.kind)) { push(); return; }
+  if (Array.isArray(v) && v.length && v.every(isObj)) {
+    if (c) push();
+    for (const [k, { v: x, parent: par }] of mergedFields(v)) walk(x, `${path}[].${k}`, k, par, { currency: curOf(par, ctx.currency) }, out, hidden);
+    return;
+  }
+  if (isObj(v)) {
+    if (c && c.kind !== 'object') { push(); return; }
+    if (c) push();
+    const cx = { currency: curOf(v, ctx.currency) };
+    for (const [k, x] of Object.entries(v)) walk(x, jp(path, k), k, v, cx, out, hidden);
+    return;
+  }
+  if (c) push();
+}
+function fieldRows(j) {
+  const out = [];
+  walk(j, '', null, null, { currency: curOf(j) }, out, false);
+  const S = state.shape || {};
+  for (const r of out) {
+    const o = state.overrides[r.path];
+    if (o) { r.c = { ...r.c, label: o.label, note: o.note || r.c.note }; if (r.vis === 'hidden') r.vis = 'shown'; }
+    if (S.shape === 'event' && !r.path.startsWith(S.path) && r.vis === 'shown' && !o && r.c.kind !== 'object') { r.vis = 'hidden'; r.c = { ...r.c, label: 'Hidden: event envelope', note: 'Wrapper around the record, not shown to users' }; }
+    if (S.shape === 'event' && r.path === S.path && r.c.kind === 'object') r.c = { ...r.c, label: 'Detail page', note: 'The record this event is about' };
+  }
+  return out;
+}
+function exText(v) {
+  if (isObj(v)) return `{ ${Object.keys(v).length} fields }`;
+  if (Array.isArray(v)) return v.every(x => !isObj(x)) ? trunc(JSON.stringify(v), 60) : `[ ${v.length} records ]`;
+  return trunc(JSON.stringify(v), 60);
+}
+function renderMap(j) {
+  renderMock(j); // keeps shape + overrides in sync with what the mockup shows
+  const rows = fieldRows(j).filter(r => r.c.kind !== 'object' || r.c.label !== 'Section' || true);
+  const cnt = s => rows.filter(r => r.vis === s).length;
+  const f = state.fmFilter || 'all';
+  const vis = rows.filter(r => f === 'all' || r.vis === f);
+  const pathHtml = p => { const i = p.lastIndexOf('.'); return i < 0 ? esc(p) : `<span class="pre">${esc(p.slice(0, i + 1))}</span>${esc(p.slice(i + 1))}`; };
+  const visLabel = { shown: 'On screen', hidden: 'Hidden', empty: 'Empty' };
+  return `<div class="fm">
+    <div class="fm-sum">
+      <div class="fm-tile"><b>${rows.length}</b><span>fields found</span></div>
+      <div class="fm-tile"><b>${cnt('shown')}</b><span>on screen</span></div>
+      <div class="fm-tile"><b>${cnt('hidden')}</b><span>hidden from users</span></div>
+      <div class="fm-tile"><b>${cnt('empty')}</b><span>empty in this payload</span></div>
+      <div class="fm-tools">
+        <div class="seg" role="group" aria-label="Filter fields">${['all', 'shown', 'hidden', 'empty'].map(x => `<button type="button" data-fm="${x}" aria-pressed="${f === x}">${x === 'all' ? 'All' : visLabel[x]}</button>`).join('')}</div>
+        <button class="btn primary" type="button" id="copySpec">Copy as Markdown</button>
+      </div>
+    </div>
+    <div class="fm-scroll"><table>
+      <thead><tr><th>Field</th><th>Example value</th><th>Type</th><th>Shown as</th><th>Visibility</th></tr></thead>
+      <tbody>${vis.map(r => `<tr data-row="${esc(r.path)}"><td class="path">${pathHtml(r.path)}</td><td class="ex" title="${esc(exText(r.v))}">${esc(exText(r.v))}</td><td class="ty">${esc(typeOf(r.v))}</td><td class="as">${esc(r.c.label)}${r.c.note ? `<span class="nt">${esc(r.c.note)}</span>` : ''}</td><td><span class="vis ${r.vis}">${visLabel[r.vis]}</span></td></tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted)">No fields in this group.</td></tr>'}</tbody>
+    </table></div>
+  </div>`;
+}
+function specMarkdown(j) {
+  const rows = fieldRows(j);
+  const cellEsc = s => String(s).replace(/\|/g, '\\|');
+  const vis = { shown: 'On screen', hidden: 'Hidden', empty: 'Empty' };
+  return ['| Field | Example | Type | Shown as | Visibility |', '|---|---|---|---|---|',
+    ...rows.map(r => `| \`${cellEsc(r.path)}\` | ${cellEsc(exText(r.v))} | ${typeOf(r.v)} | ${cellEsc(r.c.label)}${r.c.note ? ` (${cellEsc(r.c.note)})` : ''} | ${vis[r.vis]} |`)].join('\n');
+}
+
+/* ---------------- parsing ---------------- */
+function parse(text) {
+  const t = text.replace(/^﻿/, '').trim();
+  if (!t) return { empty: true };
+  try { return { data: JSON.parse(t) }; } catch (e) {
+    try {
+      const relaxed = t.replace(/^\s*\/\/.*$/gm, '').replace(/,\s*([}\]])/g, '$1');
+      return { data: JSON.parse(relaxed), warn: 'Read with small fixes (trailing commas or comment lines removed). Use Format to clean it up.' };
+    } catch {}
+    let line = null, col = null;
+    const lc = /line (\d+) column (\d+)/.exec(e.message), pos = /position (\d+)/.exec(e.message);
+    if (lc) { line = +lc[1]; col = +lc[2]; }
+    else if (pos) { const before = t.slice(0, +pos[1]).split('\n'); line = before.length; col = before[before.length - 1].length + 1; }
+    const msg = e.message.replace(/^JSON\.parse: /, '').replace(/ in JSON at position \d+( \(line \d+ column \d+\))?/, '').replace(/^SyntaxError: /, '');
+    return { error: msg, line, col };
+  }
+}
+
+/* ---------------- wiring ---------------- */
+const src = $('#src'), gutter = $('#gutter'), stage = $('#stage'), statusEl = $('#status'), statusText = $('#statusText'), inspect = $('#inspect');
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+let errLine = null, current = 'webhook';
+
+function paintGutter() {
+  const n = src.value.split('\n').length;
+  let s = '';
+  for (let i = 1; i <= n; i++) s += i === errLine ? `<span class="e">${i}</span>\n` : i + '\n';
+  gutter.innerHTML = s;
+  gutter.scrollTop = src.scrollTop;
+}
+function countFields(v) { let n = 0; (function r(x) { if (isObj(x)) for (const y of Object.values(x)) { n++; r(y); } else if (Array.isArray(x)) x.forEach(r); })(v); return n; }
+
+function update() {
+  const res = parse(src.value);
+  errLine = null;
+  statusEl.className = 'status';
+  if (res.empty) {
+    state.data = undefined;
+    statusText.textContent = 'Paste a payload, open a .json file, or drop one here.';
+  } else if (res.error) {
+    errLine = res.line;
+    statusEl.classList.add('err');
+    statusText.textContent = `This isn't valid JSON yet${res.line ? ` (line ${res.line}, column ${res.col})` : ''}: ${res.error}. The preview shows the last valid version.`;
+  } else {
+    state.data = res.data;
+    if (res.warn) statusEl.classList.add('warn');
+    const kb = (new Blob([src.value]).size / 1024).toFixed(1);
+    statusText.textContent = res.warn || `Valid JSON · ${countFields(res.data)} fields · ${kb} KB`;
+  }
+  paintGutter();
+  render();
+  store.set('jsonviz:draft', src.value);
+}
+function render() {
+  document.querySelectorAll('.mock-only').forEach(el => el.hidden = state.view !== 'mockup');
+  if (state.data === undefined) {
+    stage.innerHTML = `<div class="empty-out"><h3>Nothing to show yet</h3><p>Paste an API response, webhook body, or a JSON sample from the docs on the left. Or start from one of the examples above.</p></div>`;
+    return;
+  }
+  stage.innerHTML = state.view === 'mockup' ? renderMock(state.data) : renderMap(state.data);
+  stage.querySelectorAll('.m-img img').forEach(im => {
+    const ok = () => im.classList.add('ok'), bad = () => im.remove();
+    if (im.complete) (im.naturalWidth ? ok() : bad()); else { im.addEventListener('load', ok); im.addEventListener('error', bad); }
+  });
+}
+
+let hot = null;
+function showInspect(el) {
+  if (hot) hot.classList.remove('hot');
+  hot = el;
+  if (!el) { inspect.innerHTML = '<span>Hover any part of the mockup to see which field it came from.</span>'; return; }
+  el.classList.add('hot');
+  const p = el.dataset.path, lab = el.dataset.label, note = el.dataset.note;
+  inspect.innerHTML = `<code>${esc(p || '(root)')}</code><span class="arrow">→</span><span class="as">${esc(lab || '')}</span>${note ? `<span class="note">${esc(note)}</span>` : ''}`;
+}
+stage.addEventListener('mouseover', e => { if (state.view !== 'mockup') return; const el = e.target.closest('.m-root [data-path]'); if (el !== hot) showInspect(el); });
+stage.addEventListener('mouseleave', () => showInspect(null));
+stage.addEventListener('click', e => {
+  const el = e.target.closest('.m-root [data-path]');
+  if (el && state.view === 'mockup') { if (!e.target.closest('a')) e.preventDefault(); showInspect(el); }
+  const fb = e.target.closest('[data-fm]');
+  if (fb) { state.fmFilter = fb.dataset.fm; render(); }
+  if (e.target.closest('#copySpec')) copyText(specMarkdown(state.data), 'Field map copied as a Markdown table');
+});
+
+function copyText(text, okMsg) {
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch {}
+    ta.remove(); toast(ok ? okMsg : 'Copy was blocked by the browser. Try again from a regular tab.');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast(okMsg), fallback);
+  else fallback();
+}
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+
+let timer;
+src.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { markSample(null); update(); }, 180); });
+src.addEventListener('scroll', () => { gutter.scrollTop = src.scrollTop; });
+src.addEventListener('keydown', e => {
+  if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const s = src.selectionStart; src.setRangeText('  ', s, src.selectionEnd, 'end'); src.dispatchEvent(new Event('input')); }
+});
+$('#fmt').addEventListener('click', () => { const r = parse(src.value); if (r.data !== undefined) { src.value = JSON.stringify(r.data, null, 2); update(); toast('Formatted'); } else toast('Fix the JSON error first, then format.'); });
+$('#clear').addEventListener('click', () => { src.value = ''; markSample(null); update(); src.focus(); });
+function loadFile(file) {
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => { src.value = String(rd.result); markSample(null); const r = parse(src.value); if (r.data !== undefined && !r.warn) src.value = JSON.stringify(r.data, null, 2); update(); toast(`Opened ${file.name}`); };
+  rd.readAsText(file);
+}
+$('#file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
+const editor = $('#editor');
+editor.addEventListener('dragover', e => { e.preventDefault(); editor.classList.add('drag'); });
+editor.addEventListener('dragleave', () => editor.classList.remove('drag'));
+editor.addEventListener('drop', e => { e.preventDefault(); editor.classList.remove('drag'); loadFile(e.dataTransfer.files[0]); });
+
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setPref('view', b.dataset.view)));
+document.querySelectorAll('[data-layout]').forEach(b => b.addEventListener('click', () => setPref('layout', b.dataset.layout)));
+document.querySelectorAll('[data-device]').forEach(b => b.addEventListener('click', () => setPref('device', b.dataset.device)));
+function setPref(k, v) {
+  state[k] = v;
+  document.querySelectorAll(`[data-${k}]`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[k] === v)));
+  showInspect(null);
+  store.set('jsonviz:prefs', JSON.stringify({ view: state.view, layout: state.layout, device: state.device }));
+  render();
+}
+
+const samplesEl = $('#samples');
+for (const [id, s] of Object.entries(SAMPLES)) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'chipbtn'; b.dataset.sample = id; b.textContent = s.label; b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', () => loadSample(id));
+  samplesEl.appendChild(b);
+}
+function markSample(id) { document.querySelectorAll('[data-sample]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sample === id))); }
+function loadSample(id) { src.value = JSON.stringify(SAMPLES[id].json, null, 2); markSample(id); src.scrollTop = 0; update(); }
+
+/* boot: the viewer's own draft if there is one, otherwise the webhook example */
+try { const p = JSON.parse(store.get('jsonviz:prefs') || '{}'); ['view', 'layout', 'device'].forEach(k => { if (p[k]) setPref(k, p[k]); }); } catch {}
+const draft = store.get('jsonviz:draft');
+if (draft && draft.trim()) { src.value = draft; const match = Object.entries(SAMPLES).find(([, s]) => JSON.stringify(s.json, null, 2) === draft); markSample(match ? match[0] : null); update(); }
+else loadSample('webhook');
+</script>
+
+</body>
+</html>
